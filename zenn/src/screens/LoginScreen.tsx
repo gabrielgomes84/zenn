@@ -1,9 +1,12 @@
-// src/screens/LoginScreen.tsx
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, Image, StyleSheet } from 'react-native';
-import ZennIcon from '../assets/zennicon.png'; // Caminho correto para a imagem
+import ZennIcon from '../assets/zennicon.png';
 
-export default function LoginScreen() {
+type Props = {
+  navigation: any; // você pode tipar melhor se quiser, mas assim funciona
+};
+
+export default function LoginScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <Image source={ZennIcon} style={styles.logo} />
@@ -24,6 +27,12 @@ export default function LoginScreen() {
 
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>Entrar</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+        <Text style={{ marginTop: 16, color: '#5C3A00' }}>
+          Ainda não possuo uma conta
+        </Text>
       </TouchableOpacity>
     </View>
   );
