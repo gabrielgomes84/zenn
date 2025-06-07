@@ -25,7 +25,7 @@ export default function LoginScreen({ navigation }: Props) {
         secureTextEntry
       />
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Task')}>
         <Text style={styles.buttonText}>Entrar</Text>
       </TouchableOpacity>
 
