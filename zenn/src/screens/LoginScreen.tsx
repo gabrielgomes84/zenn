@@ -3,7 +3,7 @@ import { View, TextInput, TouchableOpacity, Text, Image, StyleSheet } from 'reac
 import ZennIcon from '../assets/zennicon.png';
 
 type Props = {
-  navigation: any; // você pode tipar melhor se quiser, mas assim funciona
+  navigation: any; // você pode tipar melhor se quiser
 };
 
 export default function LoginScreen({ navigation }: Props) {
@@ -25,7 +25,10 @@ export default function LoginScreen({ navigation }: Props) {
         secureTextEntry
       />
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Task')}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('MainTabs', { screen: 'Tasks' })}
+      >
         <Text style={styles.buttonText}>Entrar</Text>
       </TouchableOpacity>
 

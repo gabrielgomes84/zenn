@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     color: '#4C804C',
   },
   dayItem: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#4C804C',
     padding: 10,
     margin: 4,
     borderRadius: 6,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4C804C',
   },
   dayText: {
-    color: '#333',
+    color: '#FFF8DC',
     fontWeight: 'bold',
   },
   modal: {
