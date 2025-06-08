@@ -1,11 +1,41 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import CalendarSelector from '../components/CalendarSelector';
 import TaskModal from '../components/TaskModal';
+import { usuarios, tarefas } from '../data/mockData';
 
-export default function TaskScreen() {
+type Task = typeof tarefas[0];
+
+type Props = {
+  route: { params: { usuarioId: string } };
+};
+
+export default function TaskScreen({ route }: Props) {
+  const { usuarioId } = route.params;
   const [selectedDate, setSelectedDate] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [tarefasFiltradas, setTarefasFiltradas] = useState<Task[]>([]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      // Formata para padrão ISO yyyy-mm-dd pra comparar com mock
+      const partes = selectedDate.split('/');
+      const dataFormatada = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+      const filtradas = tarefas.filter(t => t.usuario_id === usuarioId && t.data === dataFormatada);
+      setTarefasFiltradas(filtradas);
+    } else {
+      setTarefasFiltradas([]);
+    }
+  }, [selectedDate, usuarioId]);
+
+  const renderTask = ({ item }: { item: Task }) => (
+    <View style={styles.taskCard}>
+      <Text style={styles.taskTitle}>{item.titulo}</Text>
+      <Text style={styles.taskDesc}>{item.descricao}</Text>
+      <Text style={styles.taskInfo}>Hora: {item.hora} - Prioridade: {item.prioridade}</Text>
+      <Text style={styles.taskStatus}>Status: {item.status}</Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -20,7 +50,14 @@ export default function TaskScreen() {
         {selectedDate ? `Tarefas para: ${selectedDate}` : 'Selecione uma data'}
       </Text>
 
-      <TouchableOpacity style={[styles.button, { marginTop: 390 }]} onPress={() => setModalVisible(true)}>
+      <FlatList
+        data={tarefasFiltradas}
+        keyExtractor={item => item.id}
+        renderItem={renderTask}
+        ListEmptyComponent={<Text style={styles.noTasks}>Nenhuma tarefa para essa data.</Text>}
+      />
+
+      <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={() => setModalVisible(true)}>
         <Text style={styles.buttonText}>Adicionar Tarefa</Text>
       </TouchableOpacity>
 
@@ -63,5 +100,37 @@ const styles = StyleSheet.create({
     color: '#FFF8DC',
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  taskCard: {
+    backgroundColor: '#e0f2e0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  taskTitle: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    color: '#2d6a2d',
+  },
+  taskDesc: {
+    fontSize: 14,
+    color: '#4c804c',
+    marginVertical: 4,
+  },
+  taskInfo: {
+    fontSize: 12,
+    color: '#4c804c',
+  },
+  taskStatus: {
+    fontSize: 12,
+    color: '#a0522d',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  noTasks: {
+    color: '#777',
+    textAlign: 'center',
+    marginTop: 20,
+    fontStyle: 'italic',
   },
 });
