@@ -1,7 +1,15 @@
-export interface User {
+export type Prioridade = "baixa" | "média" | "alta";
+export type Status = "pendente" | "concluída";
+
+export interface Task {
   id: string;
-  nome: string;
-  email: string;
-  senha: string;
-  data_criacao: string; // ISO string (ex: "2025-05-30T12:00:00Z")
+  usuario_id: string; // referência ao id do usuário
+  titulo: string;
+  descricao: string;
+  data: string; // formato: "YYYY-MM-DD"
+  hora: string; // formato: "HH:MM"
+  prioridade: Prioridade;
+  status: Status;
+  lembrete: boolean;
+  data_criacao: string;
 }
