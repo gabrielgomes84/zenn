@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native
 import CalendarSelector from '../components/CalendarSelector';
 import TaskModal from '../components/TaskModal';
 import { usuarios, tarefas } from '../data/mockData';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 type Task = typeof tarefas[0];
 
@@ -30,7 +31,21 @@ export default function TaskScreen({ route }: Props) {
 
   const renderTask = ({ item }: { item: Task }) => (
     <View style={styles.taskCard}>
-      <Text style={styles.taskTitle}>{item.titulo}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={styles.taskTitle}>{item.titulo}</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity onPress={() => {
+            setModalVisible(true); // editar (a lógica virá depois)
+          }}>
+            <Ionicons name="pencil" size={20} color="#2d6a2d" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => {
+            // excluir (sem ação por enquanto)
+          }}>
+            <Ionicons name="close" size={20} color="#a00" />
+          </TouchableOpacity>
+        </View>
+      </View>
       <Text style={styles.taskDesc}>{item.descricao}</Text>
       <Text style={styles.taskInfo}>Hora: {item.hora} - Prioridade: {item.prioridade}</Text>
       <Text style={styles.taskStatus}>Status: {item.status}</Text>
