@@ -14,7 +14,7 @@ export const tarefas = [
     usuario_id: "1",
     titulo: "Estudar React Native",
     descricao: "Revisar componentes e navegação",
-    data: "2025-06-01",
+    data: "2025-07-12",
     hora: "14:00",
     prioridade: "alta",
     status: "pendente",
