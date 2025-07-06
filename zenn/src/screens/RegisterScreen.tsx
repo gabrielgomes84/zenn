@@ -1,9 +1,43 @@
 //screens/RegisterScreen.tsx
-import React from "react";
+import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, Image, StyleSheet } from 'react-native';
+import { inserirUsuario } from '../database/usuarios';
+import { User } from '../models/user';
+import { Alert } from 'react-native';
 import ZennIcon from "../assets/zennicon.png";
 
 export default function RegisterScreen() {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+
+  const handleRegister = async () => {
+    if (!nome.trim() || !email.trim() || !senha.trim()) {
+      Alert.alert("Erro", "Todos os campos são obrigatórios.");
+      return;
+    }
+
+    const novoUsuario: User = {
+      id: Date.now().toString(),
+      nome: nome.trim(),
+      email: email.trim().toLowerCase(),
+      senha: senha.trim(),
+      data_criacao: new Date().toISOString(),
+    };
+
+    try {
+      await inserirUsuario(novoUsuario);
+      Alert.alert("Sucesso", "Usuário cadastrado com sucesso!");
+      setNome('');
+      setEmail('');
+      setSenha('');
+    } catch (error) {
+      Alert.alert("Erro", "Não foi possível cadastrar o usuário. Tente novamente.");
+      console.error(error);
+    }
+  };
+
+
   return (
     <View style={styles.container}>
       <Image source={ZennIcon} style={styles.logo} />
@@ -13,6 +47,8 @@ export default function RegisterScreen() {
         placeholder="Nome Completo"
         placeholderTextColor={"#EEE9D1"}
         keyboardType="default"
+        value={nome}
+        onChangeText={setNome}
       />
 
       <TextInput
@@ -20,15 +56,20 @@ export default function RegisterScreen() {
         placeholder="Email"
         placeholderTextColor={"#EEE9D1"}
         keyboardType="email-address"
+        value={email}
+        onChangeText={setEmail}
       />
 
       <TextInput
         style={styles.input}
         placeholder="Senha"
         placeholderTextColor={"#EEE9D1"}
-        secureTextEntry />
+        secureTextEntry
+        value={senha}
+        onChangeText={setSenha}
+      />
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={handleRegister}>
         <Text style={styles.buttonText}>Cadastrar</Text>
       </TouchableOpacity>
     </View>

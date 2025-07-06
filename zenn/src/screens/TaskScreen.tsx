@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import CalendarSelector from '../components/CalendarSelector';
 import TaskModal from '../components/TaskModal';
-import { usuarios, tarefas } from '../data/mockData';
+import { buscarUsuarioPorId } from '../database/usuarios';
+import { User } from '../models/user';
+import { Task } from '../models/task';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-type Task = typeof tarefas[0];
 
 type Props = {
   route: { params: { usuarioId: string } };
@@ -16,7 +17,16 @@ export default function TaskScreen({ route }: Props) {
   const [selectedDate, setSelectedDate] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [tarefasFiltradas, setTarefasFiltradas] = useState<Task[]>([]);
+  const [usuario, setUsuario] = useState<User | null>(null); 
 
+  useEffect(() => {
+    async function fetchUsuario() {
+      const user = await buscarUsuarioPorId(usuarioId);
+      setUsuario(user);
+    }
+    fetchUsuario();
+  }, [usuarioId]);
+ 
   useEffect(() => {
     if (selectedDate) {
       // Formata para padrão ISO yyyy-mm-dd pra comparar com mock
@@ -55,6 +65,7 @@ export default function TaskScreen({ route }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Minhas Tarefas</Text>
+      {usuario && <Text style={styles.userName}>Olá, {usuario.nome}!</Text>}
 
       <CalendarSelector onDaySelected={(day: number, month: number, year: number) => {
         const formatted = `${day}/${month + 1}/${year}`;
@@ -98,6 +109,13 @@ const styles = StyleSheet.create({
     color: '#4C804C',
     marginBottom: 20,
     textAlign: 'center',
+  },
+  userName: {               
+    fontSize: 20,           
+    fontWeight: '600',      
+    color: '#2d6a2d',       
+    textAlign: 'center',    
+    marginBottom: 12,       
   },
   dateText: {
     fontSize: 16,

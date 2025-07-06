@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, Image, StyleSheet, Alert } from 'react-native';
 import ZennIcon from '../assets/zennicon.png';
-import { usuarios, tarefas } from '../data/mockData';
+import { buscarUsuarioPorEmailSenha } from '../database/usuarios';
 
 type Props = {
   navigation: any;
@@ -12,14 +12,17 @@ export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
 
-  const handleLogin = () => {
-    const user = usuarios.find(
-    u => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.senha === senha.trim()
-  );
-    if (user) {
-      navigation.navigate('MainTabs', { screen: 'Tasks', params: { usuarioId: user.id } });
-    } else {
-      Alert.alert('Erro', 'Email ou senha incorretos');
+  const handleLogin = async () => {
+    try {
+      const user = await buscarUsuarioPorEmailSenha(email.trim().toLowerCase(), senha.trim());
+      if (user) {
+        navigation.navigate('MainTabs', { screen: 'Tasks', params: { usuarioId: user.id } });
+      } else {
+        Alert.alert('Erro', 'Email ou senha incorretos');
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao tentar fazer login');
+      console.error(error);
     }
   };
 
