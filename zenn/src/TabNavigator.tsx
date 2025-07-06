@@ -2,18 +2,11 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import TaskScreen from './screens/TaskScreen';
 import StatisticsScreen from './screens/StatisticsScreen';
+import ProfileScreen from './screens/ProfileScreen';
 import { View, Text } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const Tab = createBottomTabNavigator();
-
-function ProfileScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Profile Screen (No navigation yet)</Text>
-    </View>
-  );
-}
 
 export default function TabNavigator({ route }) {
   const initialRouteName = route?.params?.screen ?? 'Tasks';
