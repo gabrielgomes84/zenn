@@ -44,6 +44,7 @@ export default function CalendarSelector({ onDaySelected }: Props) {
         data={days}
         horizontal
         showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 10 }}
         keyExtractor={(item) => item.toString()}
         renderItem={({ item }) => (
           <TouchableOpacity
@@ -105,11 +106,14 @@ const styles = StyleSheet.create({
   },
   dayItem: {
     backgroundColor: '#4C804C',
-    padding: 10,
+    paddingVertical: 6,       // antes era 10
+    paddingHorizontal: 12,
     margin: 4,
     borderRadius: 6,
-    minWidth: 40,
     alignItems: 'center',
+    justifyContent: 'center', // adicione isso
+    minWidth: 40,
+    height: 40,                // adicione isso para evitar esticar
   },
   selectedDay: {
     backgroundColor: '#4C804C',
