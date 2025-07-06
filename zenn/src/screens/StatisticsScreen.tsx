@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import CalendarSelector from '../components/CalendarSelector';
 import { tarefas } from '../data/mockData';
-import { PieChart } from 'react-native-chart-kit';
+import DonutChart from '../components/DonutChart';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -47,8 +47,8 @@ export default function StatisticsScreen() {
         dados.push({
             name: 'Pendentes',
             population: pendentesCount,
-            color: '#A0522D',
-            legendFontColor: '#A0522D',
+            color: '#B0B0B0',
+            legendFontColor: '#B0B0B0',
             legendFontSize: 15,
         });
       }
@@ -76,21 +76,10 @@ export default function StatisticsScreen() {
       </Text>
 
       <ScrollView contentContainerStyle={styles.chartContainer}>
-        {dadosGrafico.length > 0 ? (
-            <PieChart
-                data={dadosGrafico}
-                width={screenWidth - 40}
-                height={220}
-                chartConfig={{
-                    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                }}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-            />
+        {total > 0 ? (
+          <DonutChart percentage={(concluidas / total) * 100} />
         ) : (
-            <Text style={styles.noData}>Nenhum dado disponível para o gráfico.</Text>
+          <Text style={styles.noData}>Nenhum dado disponível para o gráfico.</Text>
         )}
         {/* PASSO 4: adicionamos os números abaixo do gráfico */}
         <View style={styles.statBox}>
