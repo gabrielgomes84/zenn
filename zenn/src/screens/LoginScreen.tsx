@@ -1,3 +1,4 @@
+//screen/LoginScreen.tsx
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, Image, StyleSheet, Alert } from 'react-native';
 import ZennIcon from '../assets/zennicon.png';

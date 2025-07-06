@@ -1,3 +1,4 @@
+//screens/RegisterScreen.tsx
 import React from "react";
 import { View, TextInput, TouchableOpacity, Text, Image, StyleSheet } from 'react-native';
 import ZennIcon from "../assets/zennicon.png";
