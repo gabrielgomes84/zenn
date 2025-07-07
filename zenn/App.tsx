@@ -1,3 +1,4 @@
+//app.tsx
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './src/AppNavigator';
 

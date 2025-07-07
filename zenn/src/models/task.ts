@@ -1,3 +1,4 @@
+//src/models/task.ts
 export type Prioridade = "baixa" | "média" | "alta";
 export type Status = "pendente" | "concluída";
 
