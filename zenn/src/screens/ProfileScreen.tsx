@@ -1,63 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import EditarPerfilModal from '../components/EditProfileModal';
 
 export default function ProfileScreen() {
   const [nome, setNome] = useState('João Silva');
   const [email, setEmail] = useState('joao@email.com');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmacaoSenha, setConfirmacaoSenha] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Perfil</Text>
+      <Ionicons name="person-circle-outline" size={100} color="#4C804C" style={styles.icon} />
 
-      {/* (futura) Foto de perfil */}
-      <View style={styles.photoPlaceholder}>
-        <Text style={styles.photoText}>Foto</Text>
+      <Text style={styles.title}>Meu Perfil</Text>
+
+      <View style={styles.infoBox}>
+        <Text style={styles.label}>Nome:</Text>
+        <Text style={styles.infoText}>{nome}</Text>
+
+        <Text style={styles.label}>Email:</Text>
+        <Text style={styles.infoText}>{email}</Text>
       </View>
 
-      <TextInput
-        style={styles.input}
-        value={nome}
-        onChangeText={setNome}
-        placeholder="Nome"
-        placeholderTextColor="#888"
-      />
-
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Email"
-        placeholderTextColor="#888"
-        keyboardType="email-address"
-      />
-
-      <TextInput
-        style={styles.input}
-        value={novaSenha}
-        onChangeText={setNovaSenha}
-        placeholder="Nova senha"
-        placeholderTextColor="#888"
-        secureTextEntry
-      />
-
-      <TextInput
-        style={styles.input}
-        value={confirmacaoSenha}
-        onChangeText={setConfirmacaoSenha}
-        placeholder="Confirme a nova senha"
-        placeholderTextColor="#888"
-        secureTextEntry
-      />
-
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Salvar alterações</Text>
+      <TouchableOpacity style={styles.button} onPress={() => setModalVisible(true)}>
+        <Text style={styles.buttonText}>Alterar dados</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.button, { backgroundColor: '#A0522D', marginTop: 10 }]}>
-        <Text style={styles.buttonText}>Sair</Text>
+      <TouchableOpacity style={styles.secondaryButton}>
+        <Text style={styles.secondaryButtonText}>Sair da conta</Text>
       </TouchableOpacity>
+
+      <EditarPerfilModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        nome={nome}
+        email={email}
+        novaSenha={novaSenha}
+        confirmacaoSenha={confirmacaoSenha}
+        setNome={setNome}
+        setEmail={setEmail}
+        setNovaSenha={setNovaSenha}
+        setConfirmacaoSenha={setConfirmacaoSenha}
+      />
     </ScrollView>
   );
 }
@@ -66,48 +52,57 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: '#FFF8DC',
-    padding: 20,
-    paddingTop: 60,
     alignItems: 'center',
+    padding: 24,
+    paddingTop: 60,
+  },
+  icon: {
+    marginBottom: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#4C804C',
     marginBottom: 20,
   },
-  photoPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  photoText: {
-    color: '#888',
-    fontSize: 14,
-  },
-  input: {
+  infoBox: {
     width: '100%',
-    padding: 12,
+    marginBottom: 20,
     backgroundColor: '#fff',
     borderRadius: 8,
-    borderWidth: 1,
+    padding: 16,
     borderColor: '#ccc',
-    marginBottom: 12,
+    borderWidth: 1,
+  },
+  label: {
+    fontWeight: 'bold',
     color: '#4C804C',
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 16,
+    marginBottom: 12,
+    color: '#333',
   },
   button: {
-    width: '100%',
     backgroundColor: '#4C804C',
-    padding: 12,
+    padding: 14,
     borderRadius: 8,
+    width: '100%',
   },
   buttonText: {
     color: '#FFF8DC',
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  secondaryButton: {
+    marginTop: 14,
+    padding: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#4C804C',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
