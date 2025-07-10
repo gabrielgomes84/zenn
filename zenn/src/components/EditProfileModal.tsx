@@ -1,22 +1,19 @@
+//src/components/EditProfileModal.tsx
 import React from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  Modal, View, Text, TextInput, TouchableOpacity, StyleSheet,
 } from 'react-native';
 
 interface EditarPerfilModalProps {
   visible: boolean;
   onClose: () => void;
+  onSalvar: () => void;
   nome: string;
-  email: string;
+  senhaAtual: string;
   novaSenha: string;
   confirmacaoSenha: string;
   setNome: (text: string) => void;
-  setEmail: (text: string) => void;
+  setSenhaAtual: (text: string) => void;
   setNovaSenha: (text: string) => void;
   setConfirmacaoSenha: (text: string) => void;
 }
@@ -24,12 +21,13 @@ interface EditarPerfilModalProps {
 export default function EditarPerfilModal({
   visible,
   onClose,
+  onSalvar,
   nome,
-  email,
+  senhaAtual,
   novaSenha,
   confirmacaoSenha,
   setNome,
-  setEmail,
+  setSenhaAtual,
   setNovaSenha,
   setConfirmacaoSenha,
 }: EditarPerfilModalProps) {
@@ -49,11 +47,11 @@ export default function EditarPerfilModal({
 
           <TextInput
             style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email"
+            value={senhaAtual}
+            onChangeText={setSenhaAtual}
+            placeholder="Senha atual"
             placeholderTextColor="#888"
-            keyboardType="email-address"
+            secureTextEntry
           />
 
           <TextInput
@@ -78,8 +76,7 @@ export default function EditarPerfilModal({
             <TouchableOpacity onPress={onClose} style={styles.cancel}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.save}>
+            <TouchableOpacity onPress={onSalvar} style={styles.save}>
               <Text style={styles.saveText}>Salvar</Text>
             </TouchableOpacity>
           </View>
@@ -90,54 +87,13 @@ export default function EditarPerfilModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#fff',
-    width: '90%',
-    borderRadius: 10,
-    padding: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4C804C',
-    marginBottom: 20,
-  },
-  input: {
-    width: '100%',
-    padding: 12,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    marginBottom: 12,
-    color: '#4C804C',
-  },
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 10,
-  },
-  cancel: {
-    padding: 10,
-    marginRight: 10,
-  },
-  cancelText: {
-    color: '#4C804C',
-    fontWeight: 'bold',
-  },
-  save: {
-    backgroundColor: '#4C804C',
-    padding: 10,
-    borderRadius: 8,
-  },
-  saveText: {
-    color: '#FFF8DC',
-    fontWeight: 'bold',
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  container: { backgroundColor: '#fff', width: '90%', borderRadius: 10, padding: 20 },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#4C804C', marginBottom: 20 },
+  input: { width: '100%', padding: 12, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#ccc', marginBottom: 12, color: '#4C804C' },
+  buttons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 },
+  cancel: { padding: 10, marginRight: 10 },
+  cancelText: { color: '#4C804C', fontWeight: 'bold' },
+  save: { backgroundColor: '#4C804C', padding: 10, borderRadius: 8 },
+  saveText: { color: '#FFF8DC', fontWeight: 'bold' },
 });
