@@ -1,7 +1,9 @@
+// src/screens/StatisticsScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import CalendarSelector from '../components/CalendarSelector';
-import { tarefas } from '../data/mockData';
 import DonutChart from '../components/DonutChart';
 
 const screenWidth = Dimensions.get('window').width;
@@ -11,65 +13,49 @@ export default function StatisticsScreen() {
   const [total, setTotal] = useState(0);
   const [concluidas, setConcluidas] = useState(0);
   const [pendentes, setPendentes] = useState(0);
-  type PieChartData = {
-    name: string;
-    population: number;
-    color: string;
-    legendFontColor: string;
-    legendFontSize: number;
-  };
-  const [dadosGrafico, setDadosGrafico] = useState<PieChartData[]>([]);
 
   useEffect(() => {
-    if (selectedDate) {
+    const buscarTarefas = async () => {
+      if (!selectedDate) return;
+
       const [dia, mes, ano] = selectedDate.split('/');
       const dataFormatada = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-      const tarefasDoDia = tarefas.filter(t => t.data === dataFormatada);
-      const concluidasCount = tarefasDoDia.filter(t => t.status === 'concluída').length;
-      const pendentesCount = tarefasDoDia.filter(t => t.status === 'pendente').length;
 
-      setTotal(tarefasDoDia.length);
-      setConcluidas(concluidasCount);
-      setPendentes(pendentesCount);
+      try {
+        const q = query(
+          collection(db, 'tarefas'),
+          where('data', '==', dataFormatada)
+        );
+        const snapshot = await getDocs(q);
+        const tarefas = snapshot.docs.map(doc => doc.data());
 
-      //preparar os dados para o grafico de pizza
-      const dados = [];
-      if (concluidasCount > 0) {
-        dados.push({
-            name: 'Concluídas',
-            population: concluidasCount,
-            color: '#4CAF50',
-            legendFontColor: '#4CAF50',
-            legendFontSize: 15,
-        });
+        const concluidasCount = tarefas.filter(t => t.status === 'concluída').length;
+        const pendentesCount = tarefas.filter(t => t.status === 'pendente').length;
+
+        setTotal(tarefas.length);
+        setConcluidas(concluidasCount);
+        setPendentes(pendentesCount);
+      } catch (err) {
+        console.error('Erro ao buscar tarefas:', err);
+        setTotal(0);
+        setConcluidas(0);
+        setPendentes(0);
       }
-      if (pendentesCount > 0) {
-        dados.push({
-            name: 'Pendentes',
-            population: pendentesCount,
-            color: '#B0B0B0',
-            legendFontColor: '#B0B0B0',
-            legendFontSize: 15,
-        });
-      }
-      setDadosGrafico(dados);
-      
-    } else {
-      setTotal(0);
-      setConcluidas(0);
-      setPendentes(0);
-      setDadosGrafico([]);
-    }
+    };
+
+    buscarTarefas();
   }, [selectedDate]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Estatísticas</Text>
 
-      <CalendarSelector onDaySelected={(day, month, year) => {
-        const formatted = `${day}/${month + 1}/${year}`;
-        setSelectedDate(formatted);
-      }} />
+      <CalendarSelector
+        onDaySelected={(day, month, year) => {
+          const formatted = `${day}/${month + 1}/${year}`;
+          setSelectedDate(formatted);
+        }}
+      />
 
       <Text style={styles.dateText}>
         {selectedDate ? `Estatísticas para: ${selectedDate}` : 'Selecione uma data'}
@@ -81,7 +67,6 @@ export default function StatisticsScreen() {
         ) : (
           <Text style={styles.noData}>Nenhum dado disponível para o gráfico.</Text>
         )}
-        {/* PASSO 4: adicionamos os números abaixo do gráfico */}
         <View style={styles.statBox}>
           <Text style={styles.statNumber}>{total}</Text>
           <Text style={styles.statLabel}>Total de Tarefas</Text>

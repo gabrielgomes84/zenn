@@ -1,11 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+//src/screens/TaskScreen.tsx
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert
+} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+
 import CalendarSelector from '../components/CalendarSelector';
 import TaskModal from '../components/TaskModal';
-import { usuarios, tarefas } from '../data/mockData';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 
-type Task = typeof tarefas[0];
+type Task = {
+  id: string;
+  usuario_id: string;
+  titulo: string;
+  descricao: string;
+  data: string;
+  hora: string;
+  prioridade: string;
+  status: string;
+  lembrete: boolean;
+  data_criacao: string;
+};
 
 type Props = {
   route: { params: { usuarioId: string } };
@@ -13,21 +29,55 @@ type Props = {
 
 export default function TaskScreen({ route }: Props) {
   const { usuarioId } = route.params;
+
   const [selectedDate, setSelectedDate] = useState('');
+  const [tarefas, setTarefas] = useState<Task[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [tarefasFiltradas, setTarefasFiltradas] = useState<Task[]>([]);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
   useEffect(() => {
-    if (selectedDate) {
-      // Formata para padrão ISO yyyy-mm-dd pra comparar com mock
-      const partes = selectedDate.split('/');
-      const dataFormatada = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
-      const filtradas = tarefas.filter(t => t.usuario_id === usuarioId && t.data === dataFormatada);
-      setTarefasFiltradas(filtradas);
-    } else {
-      setTarefasFiltradas([]);
-    }
+    if (!selectedDate) return;
+
+    const partes = selectedDate.split('/');
+    const dataFormatada = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+
+    const q = query(
+      collection(db, 'tarefas'),
+      where('usuario_id', '==', usuarioId),
+      where('data', '==', dataFormatada)
+    );
+
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const dados = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Task[];
+      setTarefas(dados);
+    });
+
+    return () => unsubscribe();
   }, [selectedDate, usuarioId]);
+
+  const confirmarExclusao = (taskId: string) => {
+    Alert.alert(
+      'Excluir tarefa',
+      'Tem certeza que deseja excluir esta tarefa?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'tarefas', taskId));
+            } catch (err) {
+              console.error('Erro ao excluir:', err);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const renderTask = ({ item }: { item: Task }) => (
     <View style={styles.taskCard}>
@@ -35,13 +85,12 @@ export default function TaskScreen({ route }: Props) {
         <Text style={styles.taskTitle}>{item.titulo}</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity onPress={() => {
-            setModalVisible(true); // editar (a lógica virá depois)
+            setTaskToEdit(item);
+            setModalVisible(true);
           }}>
             <Ionicons name="pencil" size={20} color="#2d6a2d" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => {
-            // excluir (sem ação por enquanto)
-          }}>
+          <TouchableOpacity onPress={() => confirmarExclusao(item.id)}>
             <Ionicons name="close" size={20} color="#a00" />
           </TouchableOpacity>
         </View>
@@ -56,7 +105,7 @@ export default function TaskScreen({ route }: Props) {
     <View style={styles.container}>
       <Text style={styles.title}>Minhas Tarefas</Text>
 
-      <CalendarSelector onDaySelected={(day: number, month: number, year: number) => {
+      <CalendarSelector onDaySelected={(day, month, year) => {
         const formatted = `${day}/${month + 1}/${year}`;
         setSelectedDate(formatted);
       }} />
@@ -66,13 +115,19 @@ export default function TaskScreen({ route }: Props) {
       </Text>
 
       <FlatList
-        data={tarefasFiltradas}
+        data={tarefas}
         keyExtractor={item => item.id}
         renderItem={renderTask}
         ListEmptyComponent={<Text style={styles.noTasks}>Nenhuma tarefa para essa data.</Text>}
       />
 
-      <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity
+        style={[styles.button, { marginTop: 20 }]}
+        onPress={() => {
+          setTaskToEdit(null);
+          setModalVisible(true);
+        }}
+      >
         <Text style={styles.buttonText}>Adicionar Tarefa</Text>
       </TouchableOpacity>
 
@@ -80,6 +135,8 @@ export default function TaskScreen({ route }: Props) {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         selectedDate={selectedDate}
+        usuarioId={usuarioId}
+        taskToEdit={taskToEdit}
       />
     </View>
   );

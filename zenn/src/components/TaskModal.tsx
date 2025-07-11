@@ -1,46 +1,77 @@
 // src/components/TaskModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Switch,
-  Platform,
+  Modal, View, Text, StyleSheet, TouchableOpacity,
+  TextInput, Switch, Platform,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+
+type Task = {
+  id?: string;
+  usuario_id: string;
+  titulo: string;
+  descricao: string;
+  data: string;
+  hora: string;
+  prioridade: string;
+  status: string;
+  lembrete: boolean;
+  data_criacao: string;
+};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   selectedDate: string;
+  usuarioId: string;
+  taskToEdit?: Task | null;
 };
 
-export default function TaskModal({ visible, onClose, selectedDate }: Props) {
+export default function TaskModal({ visible, onClose, selectedDate, usuarioId, taskToEdit }: Props) {
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [hora, setHora] = useState('');
   const [horaSelecionada, setHoraSelecionada] = useState(new Date());
   const [mostrarPicker, setMostrarPicker] = useState(false);
   const [prioridade, setPrioridade] = useState('baixa');
   const [status, setStatus] = useState('pendente');
   const [lembrete, setLembrete] = useState(false);
 
-  const handleSalvar = () => {
+  useEffect(() => {
+    if (taskToEdit) {
+      setTitulo(taskToEdit.titulo);
+      setDescricao(taskToEdit.descricao);
+      setHoraSelecionada(new Date(`${taskToEdit.data}T${taskToEdit.hora}`));
+      setPrioridade(taskToEdit.prioridade);
+      setStatus(taskToEdit.status);
+      setLembrete(taskToEdit.lembrete);
+    } else {
+      setTitulo('');
+      setDescricao('');
+      setHoraSelecionada(new Date());
+      setPrioridade('baixa');
+      setStatus('pendente');
+      setLembrete(false);
+    }
+  }, [taskToEdit]);
+
+  const formatarData = (dataBr: string): string => {
+    const partes = dataBr.split('/');
+    return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+  };
+
+  const handleSalvar = async () => {
     const horaFormatada = horaSelecionada.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: '2-digit', minute: '2-digit',
     });
 
-    const novaTarefa = {
-      id: Date.now().toString(),
-      usuario_id: 'exemplo-usuario-id',
+    const tarefa: Task = {
+      usuario_id: usuarioId,
       titulo,
       descricao,
-      data: selectedDate,
+      data: formatarData(selectedDate), // <- aqui usamos a data corrigida
       hora: horaFormatada,
       prioridade,
       status,
@@ -48,17 +79,27 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
       data_criacao: new Date().toISOString(),
     };
 
-    console.log(novaTarefa);
-    onClose();
+    try {
+      if (taskToEdit && taskToEdit.id) {
+        const ref = doc(db, 'tarefas', taskToEdit.id);
+        await updateDoc(ref, tarefa);
+      } else {
+        await addDoc(collection(db, 'tarefas'), tarefa);
+      }
+      onClose();
+    } catch (err) {
+      console.error('Erro ao salvar tarefa:', err);
+    }
   };
 
-  const aoSelecionarHora = (event: any, selectedTime?: Date) => {
-    setMostrarPicker(false);
-    if (selectedTime) {
-      setHoraSelecionada(selectedTime);
-      setHora(
-        selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      );
+  const handleExcluir = async () => {
+    if (taskToEdit?.id) {
+      try {
+        await deleteDoc(doc(db, 'tarefas', taskToEdit.id));
+        onClose();
+      } catch (err) {
+        console.error('Erro ao excluir tarefa:', err);
+      }
     }
   };
 
@@ -66,7 +107,7 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.container}>
-          <Text style={styles.title}>Nova Tarefa</Text>
+          <Text style={styles.title}>{taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}</Text>
           <Text style={styles.date}>Data: {selectedDate}</Text>
 
           <TextInput
@@ -76,7 +117,6 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
             value={titulo}
             onChangeText={setTitulo}
           />
-
           <TextInput
             placeholder="Descrição"
             placeholderTextColor="#888"
@@ -88,7 +128,7 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
 
           <TouchableOpacity onPress={() => setMostrarPicker(true)} style={styles.timeButton}>
             <Text style={styles.timeButtonText}>
-              {hora ? `Hora: ${hora}` : 'Selecionar Hora'}
+              {horaSelecionada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </TouchableOpacity>
 
@@ -98,36 +138,25 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
               mode="time"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               is24Hour
-              onChange={aoSelecionarHora}
+              onChange={(_, selectedTime) => {
+                setMostrarPicker(false);
+                if (selectedTime) setHoraSelecionada(selectedTime);
+              }}
             />
           )}
 
           <Text style={styles.label}>Prioridade</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={prioridade}
-              onValueChange={setPrioridade}
-              style={styles.picker}
-              dropdownIconColor="#4C804C"
-            >
-              <Picker.Item label="Baixa" value="baixa" />
-              <Picker.Item label="Média" value="média" />
-              <Picker.Item label="Alta" value="alta" />
-            </Picker>
-          </View>
+          <Picker selectedValue={prioridade} onValueChange={setPrioridade} style={styles.picker}>
+            <Picker.Item label="Baixa" value="baixa" />
+            <Picker.Item label="Média" value="média" />
+            <Picker.Item label="Alta" value="alta" />
+          </Picker>
 
           <Text style={styles.label}>Status</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={status}
-              onValueChange={setStatus}
-              style={styles.picker}
-              dropdownIconColor="#4C804C"
-            >
-              <Picker.Item label="Pendente" value="pendente" />
-              <Picker.Item label="Concluída" value="concluída" />
-            </Picker>
-          </View>
+          <Picker selectedValue={status} onValueChange={setStatus} style={styles.picker}>
+            <Picker.Item label="Pendente" value="pendente" />
+            <Picker.Item label="Concluída" value="concluída" />
+          </Picker>
 
           <View style={styles.switchRow}>
             <Text style={styles.label}>Lembrete</Text>
@@ -135,10 +164,14 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
           </View>
 
           <View style={styles.buttons}>
+            {taskToEdit && (
+              <TouchableOpacity onPress={handleExcluir} style={styles.cancel}>
+                <Text style={{ color: '#a00', fontWeight: 'bold' }}>Excluir</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity onPress={onClose} style={styles.cancel}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </TouchableOpacity>
-
             <TouchableOpacity onPress={handleSalvar} style={styles.save}>
               <Text style={styles.saveText}>Salvar</Text>
             </TouchableOpacity>
@@ -192,16 +225,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontSize: 16,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
   picker: {
     backgroundColor: '#fff',
     height: 44,
+    marginBottom: 12,
   },
   switchRow: {
     flexDirection: 'row',
