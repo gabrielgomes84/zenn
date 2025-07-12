@@ -39,4 +39,4 @@ yarn-error.*
 # Firebase config
 src/services/firebase.ts
 
-android
+android/
