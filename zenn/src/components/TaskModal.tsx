@@ -8,6 +8,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import * as Notifications from 'expo-notifications';
 
 type Task = {
   id?: string;
@@ -71,7 +72,7 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
       usuario_id: usuarioId,
       titulo,
       descricao,
-      data: formatarData(selectedDate), // <- aqui usamos a data corrigida
+      data: selectedDate,
       hora: horaFormatada,
       prioridade,
       status,
@@ -86,6 +87,22 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
       } else {
         await addDoc(collection(db, 'tarefas'), tarefa);
       }
+
+      // ⏰ Agendar notificação se lembrete estiver ativado
+      if (lembrete) {
+        const [dia, mes, ano] = selectedDate.split('/');
+        const [hora, minuto] = horaFormatada.split(':');
+        const dataDisparo = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto));
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Tarefa: ${titulo}`,
+            body: descricao || 'Você definiu um lembrete.',
+          },
+          trigger: dataDisparo,
+        });
+      }
+
       onClose();
     } catch (err) {
       console.error('Erro ao salvar tarefa:', err);
