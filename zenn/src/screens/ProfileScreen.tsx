@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import EditarPerfilModal from '../components/EditProfileModal';
 import { auth } from '../services/firebase';
+import { useNavigation } from '@react-navigation/native';
 import {
   atualizarPerfilUsuario,
   atualizarSenhaComReautenticacao,
@@ -17,6 +18,7 @@ export default function ProfileScreen() {
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmacaoSenha, setConfirmacaoSenha] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const carregarDados = async () => {
@@ -79,7 +81,21 @@ export default function ProfileScreen() {
         <Text style={styles.buttonText}>Alterar dados</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.secondaryButton}>
+      <TouchableOpacity 
+      style={styles.secondaryButton}
+      onPress={async () => {
+        try {
+          await auth.signOut();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+        } catch (error) {
+          console.error('Erro ao sair da conta:', error);
+          Alert.alert('Erro', 'Falha ao sair da conta.');
+        }
+      }}
+      >
         <Text style={styles.secondaryButtonText}>Sair da conta</Text>
       </TouchableOpacity>
 

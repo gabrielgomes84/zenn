@@ -1,8 +1,10 @@
+//src/AppNavigator.tsx
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import TabNavigator from './TabNavigator'; // importe o TabNavigator
 import { Image } from 'react-native';
+
 
 const Stack = createNativeStackNavigator();
 
