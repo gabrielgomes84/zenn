@@ -18,15 +18,18 @@ export default function StatisticsScreen() {
       if (!selectedDate) return;
 
       const [dia, mes, ano] = selectedDate.split('/');
-      const dataFormatada = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+      const baseData = `${ano}-${mes.padStart(2, '0')}`;
 
       try {
-        const q = query(
-          collection(db, 'tarefas'),
-          where('data', '==', dataFormatada)
-        );
+        const q = query(collection(db, 'tarefas'));
         const snapshot = await getDocs(q);
-        const tarefas = snapshot.docs.map(doc => doc.data());
+        const tarefas = snapshot.docs
+          .map(doc => doc.data())
+          .filter(t =>
+            selectedDate.startsWith('todos')
+              ? t.data.startsWith(baseData)
+              : t.data === `${baseData}-${dia.padStart(2, '0')}`
+          );
 
         const concluidasCount = tarefas.filter(t => t.status === 'concluída').length;
         const pendentesCount = tarefas.filter(t => t.status === 'pendente').length;
@@ -50,6 +53,7 @@ export default function StatisticsScreen() {
       <Text style={styles.title}>Estatísticas</Text>
 
       <CalendarSelector
+        mostrarTodos
         onDaySelected={(day, month, year) => {
           const formatted = `${day}/${month + 1}/${year}`;
           setSelectedDate(formatted);
@@ -57,7 +61,7 @@ export default function StatisticsScreen() {
       />
 
       <Text style={styles.dateText}>
-        {selectedDate ? `Estatísticas para: ${selectedDate}` : 'Selecione uma data'}
+        {selectedDate ? `Porcentagem de sucesso para: ${selectedDate}` : 'Selecione uma data'}
       </Text>
 
       <ScrollView contentContainerStyle={styles.chartContainer}>
