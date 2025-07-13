@@ -4,6 +4,11 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './src/AppNavigator';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications (remote notifications) functionality provided by expo-notifications was removed from Expo Go',
+]);
 
 export default function App() {
   useEffect(() => {

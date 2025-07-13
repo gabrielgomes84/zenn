@@ -1,8 +1,13 @@
-// src/components/TaskModal.tsx
 import React, { useState, useEffect } from 'react';
 import {
-  Modal, View, Text, StyleSheet, TouchableOpacity,
-  TextInput, Switch, Platform,
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Switch,
+  Platform,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -15,7 +20,7 @@ type Task = {
   usuario_id: string;
   titulo: string;
   descricao: string;
-  data: string;
+  data: string; // formato ISO yyyy-mm-dd
   hora: string;
   prioridade: string;
   status: string;
@@ -26,7 +31,7 @@ type Task = {
 type Props = {
   visible: boolean;
   onClose: () => void;
-  selectedDate: string;
+  selectedDate: string; // formato dd/mm/yyyy
   usuarioId: string;
   taskToEdit?: Task | null;
 };
@@ -37,8 +42,12 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
   const [horaSelecionada, setHoraSelecionada] = useState(new Date());
   const [mostrarPicker, setMostrarPicker] = useState(false);
   const [prioridade, setPrioridade] = useState('baixa');
-  const [status, setStatus] = useState('pendente');
   const [lembrete, setLembrete] = useState(false);
+
+  const formatarDataParaISO = (dataBr: string) => {
+    const [dia, mes, ano] = dataBr.split('/');
+    return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     if (taskToEdit) {
@@ -46,38 +55,37 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
       setDescricao(taskToEdit.descricao);
       setHoraSelecionada(new Date(`${taskToEdit.data}T${taskToEdit.hora}`));
       setPrioridade(taskToEdit.prioridade);
-      setStatus(taskToEdit.status);
       setLembrete(taskToEdit.lembrete);
     } else {
       setTitulo('');
       setDescricao('');
       setHoraSelecionada(new Date());
       setPrioridade('baixa');
-      setStatus('pendente');
       setLembrete(false);
     }
   }, [taskToEdit]);
 
-  const formatarData = (dataBr: string): string => {
-    const partes = dataBr.split('/');
-    return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
-  };
-
   const handleSalvar = async () => {
+    if (!titulo.trim()) {
+      alert('O título é obrigatório.');
+      return;
+    }
+
     const horaFormatada = horaSelecionada.toLocaleTimeString([], {
-      hour: '2-digit', minute: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     });
 
     const tarefa: Task = {
       usuario_id: usuarioId,
-      titulo,
-      descricao,
-      data: selectedDate,
+      titulo: titulo.trim(),
+      descricao: descricao.trim(),
+      data: formatarDataParaISO(selectedDate),
       hora: horaFormatada,
       prioridade,
-      status,
+      status: taskToEdit?.status ?? 'pendente',
       lembrete,
-      data_criacao: new Date().toISOString(),
+      data_criacao: taskToEdit?.data_criacao ?? new Date().toISOString(),
     };
 
     try {
@@ -88,24 +96,30 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
         await addDoc(collection(db, 'tarefas'), tarefa);
       }
 
-      // ⏰ Agendar notificação se lembrete estiver ativado
       if (lembrete) {
         const [dia, mes, ano] = selectedDate.split('/');
         const [hora, minuto] = horaFormatada.split(':');
-        const dataDisparo = new Date(Number(ano), Number(mes) - 1, Number(dia), Number(hora), Number(minuto));
+        const dataDisparo = new Date(
+          Number(ano),
+          Number(mes) - 1,
+          Number(dia),
+          Number(hora),
+          Number(minuto)
+        );
 
         await Notifications.scheduleNotificationAsync({
           content: {
             title: `Tarefa: ${titulo}`,
             body: descricao || 'Você definiu um lembrete.',
           },
-          trigger: dataDisparo,
+          trigger: { type: 'date', date: dataDisparo },
         });
       }
 
       onClose();
     } catch (err) {
       console.error('Erro ao salvar tarefa:', err);
+      alert('Erro ao salvar tarefa, tente novamente.');
     }
   };
 
@@ -116,6 +130,7 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
         onClose();
       } catch (err) {
         console.error('Erro ao excluir tarefa:', err);
+        alert('Erro ao excluir tarefa, tente novamente.');
       }
     }
   };
@@ -129,21 +144,25 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
 
           <TextInput
             placeholder="Título"
-            placeholderTextColor="#888"
+            placeholderTextColor="#ccc"
             style={styles.input}
             value={titulo}
             onChangeText={setTitulo}
           />
+
           <TextInput
             placeholder="Descrição"
-            placeholderTextColor="#888"
+            placeholderTextColor="#ccc"
             style={styles.input}
             value={descricao}
             onChangeText={setDescricao}
             multiline
           />
 
-          <TouchableOpacity onPress={() => setMostrarPicker(true)} style={styles.timeButton}>
+          <TouchableOpacity
+            onPress={() => setMostrarPicker(true)}
+            style={styles.timeButton}
+          >
             <Text style={styles.timeButtonText}>
               {horaSelecionada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
@@ -163,16 +182,15 @@ export default function TaskModal({ visible, onClose, selectedDate, usuarioId, t
           )}
 
           <Text style={styles.label}>Prioridade</Text>
-          <Picker selectedValue={prioridade} onValueChange={setPrioridade} style={styles.picker}>
+          <Picker
+            selectedValue={prioridade}
+            onValueChange={setPrioridade}
+            style={styles.picker}
+            dropdownIconColor="#fff"
+          >
             <Picker.Item label="Baixa" value="baixa" />
             <Picker.Item label="Média" value="média" />
             <Picker.Item label="Alta" value="alta" />
-          </Picker>
-
-          <Text style={styles.label}>Status</Text>
-          <Picker selectedValue={status} onValueChange={setStatus} style={styles.picker}>
-            <Picker.Item label="Pendente" value="pendente" />
-            <Picker.Item label="Concluída" value="concluída" />
           </Picker>
 
           <View style={styles.switchRow}>
@@ -207,7 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFF8DC', // branco do app
     width: '90%',
     borderRadius: 10,
     padding: 20,
@@ -215,7 +233,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4C804C',
+    color: '#4C804C', // verde do app no texto
     marginBottom: 6,
     textAlign: 'center',
   },
@@ -244,8 +262,10 @@ const styles = StyleSheet.create({
   },
   picker: {
     backgroundColor: '#fff',
-    height: 44,
+    paddingVertical: 6,
+    borderRadius: 8,
     marginBottom: 12,
+    color: '#4C804C',
   },
   switchRow: {
     flexDirection: 'row',
@@ -291,3 +311,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+

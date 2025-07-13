@@ -1,14 +1,14 @@
-//src/screens/TaskScreen.tsx
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert
+  View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Platform, ActionSheetIOS, Modal, Pressable
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
 import CalendarSelector from '../components/CalendarSelector';
 import TaskModal from '../components/TaskModal';
+import { salvarCorLocal, buscarCores } from '../services/colorsStorage';
 
 type Task = {
   id: string;
@@ -21,6 +21,7 @@ type Task = {
   status: string;
   lembrete: boolean;
   data_criacao: string;
+  cor?: string;
 };
 
 type Props = {
@@ -34,6 +35,8 @@ export default function TaskScreen({ route }: Props) {
   const [tarefas, setTarefas] = useState<Task[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [colorPickerVisible, setColorPickerVisible] = useState(false);
+  const [taskColorPicker, setTaskColorPicker] = useState<Task | null>(null);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -47,12 +50,26 @@ export default function TaskScreen({ route }: Props) {
       where('data', '==', dataFormatada)
     );
 
-    const unsubscribe = onSnapshot(q, snapshot => {
-      const dados = snapshot.docs.map(doc => ({
+    const unsubscribe = onSnapshot(q, async snapshot => {
+      const dadosFirestore = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       })) as Task[];
-      setTarefas(dados);
+
+      const coresMap = await buscarCores();
+
+      const dadosComCor = dadosFirestore.map(t => ({
+        ...t,
+        cor: coresMap[t.id] || '#808080',
+      }));
+
+      const dadosOrdenados = dadosComCor.sort((a, b) => {
+        if (a.status === 'concluída' && b.status !== 'concluída') return 1;
+        if (a.status !== 'concluída' && b.status === 'concluída') return -1;
+        return 0;
+      });
+
+      setTarefas(dadosOrdenados);
     });
 
     return () => unsubscribe();
@@ -79,25 +96,91 @@ export default function TaskScreen({ route }: Props) {
     );
   };
 
+  const marcarConcluida = async (task: Task) => {
+    try {
+      const ref = doc(db, 'tarefas', task.id);
+      await updateDoc(ref, { status: 'concluída' });
+    } catch (err) {
+      console.error('Erro ao atualizar status:', err);
+    }
+  };
+
+  const cores = ['#808080', '#FF8C00', '#FF6347', '#1E90FF', '#FFD700', '#800080'];
+
+  const mostrarSeletorCor = (task: Task) => {
+    if (task.status === 'concluída') return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...cores, 'Cancelar'],
+          cancelButtonIndex: cores.length,
+          title: 'Escolha a cor',
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === cores.length) return;
+          const corEscolhida = cores[buttonIndex];
+          await salvarCorLocal(task.id, corEscolhida);
+          setTarefas(prev =>
+            prev.map(t => (t.id === task.id ? { ...t, cor: corEscolhida } : t))
+          );
+        }
+      );
+    } else {
+      setTaskColorPicker(task);
+      setColorPickerVisible(true);
+    }
+  };
+
+  const selecionarCorAndroid = async (cor: string) => {
+    if (!taskColorPicker) return;
+    await salvarCorLocal(taskColorPicker.id, cor);
+    setTarefas(prev =>
+      prev.map(t => (t.id === taskColorPicker.id ? { ...t, cor } : t))
+    );
+    setColorPickerVisible(false);
+    setTaskColorPicker(null);
+  };
+
   const renderTask = ({ item }: { item: Task }) => (
-    <View style={styles.taskCard}>
+    <View style={[
+      styles.taskCard,
+      {
+        backgroundColor: item.status === 'concluída' ? '#4C804C' : (item.cor || '#808080'),
+      }
+    ]}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={styles.taskTitle}>{item.titulo}</Text>
+        <Text style={[styles.taskTitle, { color: '#FFF8DC' }]}>{item.titulo}</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
+          {item.status === 'pendente' && (
+            <TouchableOpacity onPress={() => marcarConcluida(item)} style={{ marginRight: 10 }}>
+              <Ionicons name="checkmark-circle-outline" size={22} color="#FFF8DC" />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => {
             setTaskToEdit(item);
             setModalVisible(true);
           }}>
-            <Ionicons name="pencil" size={20} color="#2d6a2d" />
+            <Ionicons name="pencil" size={20} color="#FFF8DC" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => confirmarExclusao(item.id)}>
-            <Ionicons name="close" size={20} color="#a00" />
+            <Ionicons name="close" size={20} color="#FFF8DC" />
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.taskDesc}>{item.descricao}</Text>
-      <Text style={styles.taskInfo}>Hora: {item.hora} - Prioridade: {item.prioridade}</Text>
-      <Text style={styles.taskStatus}>Status: {item.status}</Text>
+
+      <Text style={[styles.taskDesc, { color: '#FFF8DC' }]}>{item.descricao}</Text>
+      <Text style={[styles.taskInfo, { color: '#FFF8DC' }]}>Hora: {item.hora} - Prioridade: {item.prioridade}</Text>
+      <Text style={[styles.taskStatus, { color: '#FFF8DC' }]}>Status: {item.status}</Text>
+
+      {item.status !== 'concluída' && (
+        <TouchableOpacity
+          style={styles.iconeCor}
+          onPress={() => mostrarSeletorCor(item)}
+        >
+          <Ionicons name="color-palette-outline" size={24} color="#FFF8DC" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -138,6 +221,31 @@ export default function TaskScreen({ route }: Props) {
         usuarioId={usuarioId}
         taskToEdit={taskToEdit}
       />
+
+      <Modal
+        transparent
+        visible={colorPickerVisible}
+        animationType="fade"
+        onRequestClose={() => setColorPickerVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setColorPickerVisible(false)}>
+          <View style={styles.colorPickerContainer}>
+            {cores.map(cor => (
+              <TouchableOpacity
+                key={cor}
+                style={[styles.colorCircle, { backgroundColor: cor }]}
+                onPress={() => selecionarCorAndroid(cor)}
+              />
+            ))}
+            <TouchableOpacity
+              style={[styles.cancelButton]}
+              onPress={() => setColorPickerVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -174,28 +282,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   taskCard: {
-    backgroundColor: '#e0f2e0',
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
+    position: 'relative',
   },
   taskTitle: {
     fontWeight: 'bold',
     fontSize: 18,
-    color: '#2d6a2d',
   },
   taskDesc: {
     fontSize: 14,
-    color: '#4c804c',
     marginVertical: 4,
   },
   taskInfo: {
     fontSize: 12,
-    color: '#4c804c',
   },
   taskStatus: {
     fontSize: 12,
-    color: '#a0522d',
     marginTop: 4,
     fontWeight: '600',
   },
@@ -204,5 +308,41 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontStyle: 'italic',
+  },
+  iconeCor: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  colorPickerContainer: {
+    backgroundColor: '#FFF8DC',
+    padding: 20,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  colorCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  cancelButton: {
+    position: 'absolute',
+    bottom: -50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#4C804C',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
