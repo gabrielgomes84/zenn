@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -7,49 +7,144 @@ import {
   TouchableOpacity,
   TextInput,
   Switch,
+  Platform,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import * as Notifications from 'expo-notifications';
+
+type Task = {
+  id?: string;
+  usuario_id: string;
+  titulo: string;
+  descricao: string;
+  data: string; // formato ISO yyyy-mm-dd
+  hora: string;
+  prioridade: string;
+  status: string;
+  lembrete: boolean;
+  data_criacao: string;
+};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  selectedDate: string;
+  selectedDate: string; // formato dd/mm/yyyy
+  usuarioId: string;
+  taskToEdit?: Task | null;
 };
 
-export default function TaskModal({ visible, onClose, selectedDate }: Props) {
+export default function TaskModal({ visible, onClose, selectedDate, usuarioId, taskToEdit }: Props) {
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [hora, setHora] = useState('');
+  const [horaSelecionada, setHoraSelecionada] = useState(new Date());
+  const [mostrarPicker, setMostrarPicker] = useState(false);
   const [prioridade, setPrioridade] = useState('baixa');
-  const [status, setStatus] = useState('pendente');
   const [lembrete, setLembrete] = useState(false);
 
-  const handleSalvar = () => {
-    const novaTarefa = {
-      id: Date.now().toString(),
-      usuario_id: 'exemplo-usuario-id',
-      titulo,
-      descricao,
-      data: selectedDate,
-      hora,
+  const formatarDataParaISO = (dataBr: string) => {
+    const [dia, mes, ano] = dataBr.split('/');
+    return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (taskToEdit) {
+      setTitulo(taskToEdit.titulo);
+      setDescricao(taskToEdit.descricao);
+      setHoraSelecionada(new Date(`${taskToEdit.data}T${taskToEdit.hora}`));
+      setPrioridade(taskToEdit.prioridade);
+      setLembrete(taskToEdit.lembrete);
+    } else {
+      setTitulo('');
+      setDescricao('');
+      setHoraSelecionada(new Date());
+      setPrioridade('baixa');
+      setLembrete(false);
+    }
+  }, [taskToEdit]);
+
+  const handleSalvar = async () => {
+    if (!titulo.trim()) {
+      alert('O título é obrigatório.');
+      return;
+    }
+
+    const horaFormatada = horaSelecionada.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const tarefa: Task = {
+      usuario_id: usuarioId,
+      titulo: titulo.trim(),
+      descricao: descricao.trim(),
+      data: formatarDataParaISO(selectedDate),
+      hora: horaFormatada,
       prioridade,
-      status,
+      status: taskToEdit?.status ?? 'pendente',
       lembrete,
-      data_criacao: new Date().toISOString(),
+      data_criacao: taskToEdit?.data_criacao ?? new Date().toISOString(),
     };
-    console.log(novaTarefa); // aqui você pode enviar para o backend
-    onClose();
+
+    try {
+      if (taskToEdit && taskToEdit.id) {
+        const ref = doc(db, 'tarefas', taskToEdit.id);
+        await updateDoc(ref, tarefa);
+      } else {
+        await addDoc(collection(db, 'tarefas'), tarefa);
+      }
+
+      if (lembrete) {
+        const [dia, mes, ano] = selectedDate.split('/');
+        const [hora, minuto] = horaFormatada.split(':');
+        const dataDisparo = new Date(
+          Number(ano),
+          Number(mes) - 1,
+          Number(dia),
+          Number(hora),
+          Number(minuto)
+        );
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Tarefa: ${titulo}`,
+            body: descricao || 'Você definiu um lembrete.',
+          },
+          trigger: { type: 'date', date: dataDisparo },
+        });
+      }
+
+      onClose();
+    } catch (err) {
+      console.error('Erro ao salvar tarefa:', err);
+      alert('Erro ao salvar tarefa, tente novamente.');
+    }
+  };
+
+  const handleExcluir = async () => {
+    if (taskToEdit?.id) {
+      try {
+        await deleteDoc(doc(db, 'tarefas', taskToEdit.id));
+        onClose();
+      } catch (err) {
+        console.error('Erro ao excluir tarefa:', err);
+        alert('Erro ao excluir tarefa, tente novamente.');
+      }
+    }
   };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.title}>Nova Tarefa</Text>
+        <View style={styles.container}>
+          <Text style={styles.title}>{taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}</Text>
           <Text style={styles.date}>Data: {selectedDate}</Text>
 
           <TextInput
             placeholder="Título"
+            placeholderTextColor="#ccc"
             style={styles.input}
             value={titulo}
             onChangeText={setTitulo}
@@ -57,35 +152,45 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
 
           <TextInput
             placeholder="Descrição"
+            placeholderTextColor="#ccc"
             style={styles.input}
             value={descricao}
             onChangeText={setDescricao}
+            multiline
           />
 
-          <TextInput
-            placeholder="Hora (ex: 14:30)"
-            style={styles.input}
-            value={hora}
-            onChangeText={setHora}
-          />
+          <TouchableOpacity
+            onPress={() => setMostrarPicker(true)}
+            style={styles.timeButton}
+          >
+            <Text style={styles.timeButtonText}>
+              {horaSelecionada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+
+          {mostrarPicker && (
+            <DateTimePicker
+              value={horaSelecionada}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              is24Hour
+              onChange={(_, selectedTime) => {
+                setMostrarPicker(false);
+                if (selectedTime) setHoraSelecionada(selectedTime);
+              }}
+            />
+          )}
 
           <Text style={styles.label}>Prioridade</Text>
           <Picker
             selectedValue={prioridade}
             onValueChange={setPrioridade}
-            style={styles.picker}>
+            style={styles.picker}
+            dropdownIconColor="#fff"
+          >
             <Picker.Item label="Baixa" value="baixa" />
             <Picker.Item label="Média" value="média" />
             <Picker.Item label="Alta" value="alta" />
-          </Picker>
-
-          <Text style={styles.label}>Status</Text>
-          <Picker
-            selectedValue={status}
-            onValueChange={setStatus}
-            style={styles.picker}>
-            <Picker.Item label="Pendente" value="pendente" />
-            <Picker.Item label="Concluída" value="concluída" />
           </Picker>
 
           <View style={styles.switchRow}>
@@ -93,13 +198,19 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
             <Switch value={lembrete} onValueChange={setLembrete} />
           </View>
 
-          <TouchableOpacity onPress={handleSalvar} style={styles.saveButton}>
-            <Text style={styles.buttonText}>Salvar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.buttonText}>Cancelar</Text>
-          </TouchableOpacity>
+          <View style={styles.buttons}>
+            {taskToEdit && (
+              <TouchableOpacity onPress={handleExcluir} style={styles.cancel}>
+                <Text style={{ color: '#a00', fontWeight: 'bold' }}>Excluir</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} style={styles.cancel}>
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSalvar} style={styles.save}>
+              <Text style={styles.saveText}>Salvar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -109,68 +220,95 @@ export default function TaskModal({ visible, onClose, selectedDate }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: '#FFF8DC',
-    padding: 20,
-    borderRadius: 12,
+  container: {
+    backgroundColor: '#FFF8DC', // branco do app
     width: '90%',
+    borderRadius: 10,
+    padding: 20,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#4C804C',
-    marginBottom: 10,
+    color: '#4C804C', // verde do app no texto
+    marginBottom: 6,
     textAlign: 'center',
   },
   date: {
     fontSize: 14,
     color: '#4C804C',
-    marginBottom: 10,
+    marginBottom: 16,
     textAlign: 'center',
   },
   input: {
+    width: '100%',
+    padding: 12,
     backgroundColor: '#fff',
-    borderColor: '#ccc',
-    borderWidth: 1,
     borderRadius: 8,
-    marginBottom: 10,
-    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginBottom: 12,
+    color: '#4C804C',
+    fontSize: 16,
   },
   label: {
     color: '#4C804C',
     fontWeight: '600',
-    marginTop: 10,
-    marginBottom: 4,
+    marginBottom: 6,
+    fontSize: 16,
   },
   picker: {
     backgroundColor: '#fff',
+    paddingVertical: 6,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: 12,
+    color: '#4C804C',
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 10,
+    marginBottom: 20,
   },
-  saveButton: {
-    backgroundColor: '#4C804C',
+  timeButton: {
     padding: 12,
     borderRadius: 8,
-    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginBottom: 12,
+    backgroundColor: '#fff',
   },
-  closeButton: {
-    backgroundColor: '#888',
-    padding: 12,
-    borderRadius: 8,
+  timeButtonText: {
+    color: '#4C804C',
+    fontSize: 16,
   },
-  buttonText: {
-    color: '#FFF8DC',
-    textAlign: 'center',
+  buttons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  cancel: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginRight: 10,
+  },
+  cancelText: {
+    color: '#4C804C',
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  save: {
+    backgroundColor: '#4C804C',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  saveText: {
+    color: '#FFF8DC',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
+

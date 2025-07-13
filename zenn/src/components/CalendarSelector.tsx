@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal } from 'react-native';
 
 const months = [
@@ -9,39 +9,35 @@ const months = [
 const years = [2023, 2024, 2025];
 
 interface Props {
-  onDaySelected: (day: number, month: number, year: number) => void;
+  onDaySelected: (day: number | 'todos', month: number, year: number) => void;
+  mostrarTodos?: boolean;
 }
 
-export default function CalendarSelector({ onDaySelected }: Props) {
+export default function CalendarSelector({ onDaySelected, mostrarTodos = false }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | 'todos' | null>(null);
   const [showMonthModal, setShowMonthModal] = useState(false);
   const [showYearModal, setShowYearModal] = useState(false);
 
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const listaDias = mostrarTodos ? ['todos', ...days] : days;
 
   return (
     <View>
-      {/* Seletor de Mês e Ano */}
       <View style={styles.selectorRow}>
         <TouchableOpacity onPress={() => setShowMonthModal(true)}>
-          <Text style={styles.selectorText}>
-            {months[selectedMonth]} ▼
-          </Text>
+          <Text style={styles.selectorText}>{months[selectedMonth]} ▼</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setShowYearModal(true)}>
-          <Text style={styles.selectorText}>
-            {selectedYear} ▼
-          </Text>
+          <Text style={styles.selectorText}>{selectedYear} ▼</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Lista horizontal de dias */}
       <FlatList
-        data={days}
+        data={listaDias}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 10 }}
@@ -54,15 +50,16 @@ export default function CalendarSelector({ onDaySelected }: Props) {
             ]}
             onPress={() => {
               setSelectedDay(item);
-              onDaySelected(item, selectedMonth, selectedYear);
+              onDaySelected(item as number | 'todos', selectedMonth, selectedYear);
             }}
           >
-            <Text style={styles.dayText}>{item}</Text>
+            <Text style={styles.dayText}>
+              {item === 'todos' ? 'Todos' : item}
+            </Text>
           </TouchableOpacity>
         )}
       />
 
-      {/* Modal de mês */}
       <Modal visible={showMonthModal} transparent animationType="slide">
         <View style={styles.modal}>
           {months.map((month, index) => (
@@ -76,7 +73,6 @@ export default function CalendarSelector({ onDaySelected }: Props) {
         </View>
       </Modal>
 
-      {/* Modal de ano */}
       <Modal visible={showYearModal} transparent animationType="slide">
         <View style={styles.modal}>
           {years.map((year) => (
@@ -106,17 +102,18 @@ const styles = StyleSheet.create({
   },
   dayItem: {
     backgroundColor: '#4C804C',
-    paddingVertical: 6,       // antes era 10
+    paddingVertical: 6,
     paddingHorizontal: 12,
     margin: 4,
     borderRadius: 6,
     alignItems: 'center',
-    justifyContent: 'center', // adicione isso
+    justifyContent: 'center',
     minWidth: 40,
-    height: 40,                // adicione isso para evitar esticar
+    height: 40,
   },
   selectedDay: {
     backgroundColor: '#4C804C',
+    opacity: 0.7,
   },
   dayText: {
     color: '#FFF8DC',
